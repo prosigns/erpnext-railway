@@ -6,8 +6,6 @@
     },
     "deploy": {
         "numReplicas": 1,
-        "startCommand": "/usr/local/bin/railway-cmd.sh",
-        "healthcheckPath": "/api/method/ping",
-        "healthcheckTimeout": 1200
+        "startCommand": "/usr/local/bin/railway-cmd.sh"
     }
 }
