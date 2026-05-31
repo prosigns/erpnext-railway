@@ -14,6 +14,37 @@ _db_name() {
     echo "${RFP_DOMAIN_NAME}" | tr '.-' '_'
 }
 
+# External service connection settings. On Railway, services talk over private
+# networking at "<service-name>.railway.internal", so these are the defaults.
+export DB_HOST="${DB_HOST:-mariadb.railway.internal}"
+export DB_PORT="${DB_PORT:-3306}"
+
+require_var() {
+    if [ -z "${!1}" ]; then
+        echo "ERROR: $1 is not set" >&2
+        exit 1
+    fi
+}
+
+# Point the site at the external MariaDB and Redis services. There is NO Redis
+# inside this container, so without redis_cache / redis_queue the gunicorn web
+# process and the bench workers cannot start — the :8000 upstream dies and nginx
+# returns 502. Written on every boot (via bench set-config, which merges instead
+# of clobbering) so the config always tracks the current service URLs.
+configure_services() {
+    require_var REDIS_CACHE_URL
+    require_var REDIS_QUEUE_URL
+
+    echo "-> Configuring MariaDB + Redis connections in common_site_config.json"
+    su frappe -c "cd /home/frappe/frappe-bench \
+        && bench set-config -g db_host '${DB_HOST}' \
+        && bench set-config -gp db_port '${DB_PORT}' \
+        && bench set-config -g redis_cache '${REDIS_CACHE_URL}' \
+        && bench set-config -g redis_queue '${REDIS_QUEUE_URL}' \
+        && bench set-config -g redis_socketio '${REDIS_QUEUE_URL}' \
+        && bench set-config -gp socketio_port 9000"
+}
+
 # Returns 0 (true) if the site directory, site_config.json, AND the
 # MariaDB database (tabDocType table) are all present — meaning
 # `bench new-site` completed successfully on a previous run.
@@ -61,6 +92,8 @@ report_persistence() {
         echo "######################################################################" >&2
     fi
 }
+
+configure_services
 
 report_persistence
 

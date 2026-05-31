@@ -55,13 +55,9 @@ is_site_initialized() {
 if is_site_initialized; then
     echo "-> Site ${RFP_DOMAIN_NAME} is already initialized (directory + database verified), skipping site creation"
 else
-    echo "-> Create common site config with socketio_port"
-    su frappe -c "cat > \"${SITES_DIR}/common_site_config.json\" << 'EOF'
-{
-  \"socketio_port\": 9000
-}
-EOF"
-
+    # NOTE: common_site_config.json (db_host + redis_*) is written by
+    # configure_services() in railway-cmd.sh BEFORE this script runs, so
+    # bench new-site connects to the external MariaDB/Redis correctly.
     echo "-> Create new site with ERPNext"
     su frappe -c "bench new-site ${RFP_DOMAIN_NAME} --admin-password ${RFP_SITE_ADMIN_PASSWORD} --no-mariadb-socket --db-root-password ${FRAPPE_DB_PASSWORD} --install-app erpnext"
     su frappe -c "bench --site ${RFP_DOMAIN_NAME} set-config socketio_port 9000"
