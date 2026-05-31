@@ -5,6 +5,17 @@
 [ERPNext](https://erpnext.com/) is a free, open-source ERP (Enterprise Resource Planning) system designed for small and medium businesses.
 Built on the [Frappe framework](https://frappe.io/), it provides integrated modules for accounting, HR, CRM, inventory, manufacturing, and project management.
 
+## Included apps
+
+Every deploy installs the following Frappe apps into the site (all pinned to **v16**):
+
+- **ERPNext** — core ERP modules.
+- **Frappe HR (HRMS)** — HR & payroll.
+- **[ZKTeco Biometric Integration](https://github.com/navariltd/zkteco-biometric-integration)** — pulls attendance check-ins from ZKTeco biometric devices into HR. Depends on ERPNext + HRMS, so it is installed last.
+
+All three are baked into the Docker image at build time and installed into the site
+on first boot (and verified as installed on every subsequent boot).
+
 ## About Hosting ERPNext
 
 Hosting ERPNext involves deploying the Frappe framework along with its essential services: MariaDB for data storage, Redis for caching and queuing, and a reverse proxy like Nginx.

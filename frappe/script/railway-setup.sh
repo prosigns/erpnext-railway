@@ -72,6 +72,11 @@ echo "-> Install HRMS app into the site"
 # need to install it into the site's database here.
 su frappe -c "bench --site ${RFP_DOMAIN_NAME} install-app hrms" 2>&1 || echo "HRMS installation completed or already installed"
 
+echo "-> Install ZKTeco Biometric Integration app into the site"
+# App code is baked into the image (see Dockerfile); install it into the site's
+# database here. Installed AFTER hrms because it depends on erpnext + hrms.
+su frappe -c "bench --site ${RFP_DOMAIN_NAME} install-app zkteco_biometric_integration" 2>&1 || echo "ZKTeco installation completed or already installed"
+
 echo "-> Disable automatic user creation for Employee (prevents broken welcome email template)"
 # Write a small Python script to a temp file to avoid shell-escaping issues with bench execute
 PATCH_SCRIPT=$(mktemp /tmp/frappe_patch_XXXXXX.py)

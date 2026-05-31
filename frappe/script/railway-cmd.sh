@@ -101,10 +101,12 @@ if ! is_site_initialized; then
     echo "-> Site not fully initialized, running setup"
     /home/frappe/frappe-bench/railway-setup.sh
 else
-    echo "-> Site already initialized, ensuring HRMS is installed"
-    # HRMS app code is baked into the image (see Dockerfile); just make sure it
+    echo "-> Site already initialized, ensuring HRMS + ZKTeco are installed"
+    # App code is baked into the image (see Dockerfile); just make sure each app
     # is installed into this site's database (no-op if already installed).
+    # ZKTeco after HRMS because it depends on erpnext + hrms.
     su frappe -c "bench --site ${RFP_DOMAIN_NAME} install-app hrms" 2>&1 || echo "HRMS installation completed or already installed"
+    su frappe -c "bench --site ${RFP_DOMAIN_NAME} install-app zkteco_biometric_integration" 2>&1 || echo "ZKTeco installation completed or already installed"
 fi
 
 echo "-> Clearing cache"

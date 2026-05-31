@@ -33,14 +33,16 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/*
 
-# Bake the HRMS app into the image at build time so it is NOT re-cloned from
-# GitHub on every container boot. This only fetches + builds the app code and
-# its assets; installing it into a site's database still happens at runtime
+# Bake the HRMS and ZKTeco biometric apps into the image at build time so they are
+# NOT re-cloned from GitHub on every container boot. This only fetches + builds the
+# app code and its assets; installing into a site's database still happens at runtime
 # (see railway-setup.sh / railway-cmd.sh) because the site lives on the volume.
-# Done BEFORE the built_sites copy below so hrms assets + apps.txt are included.
+# Done BEFORE the built_sites copy below so the apps' assets + apps.txt are included.
+# Order matters: hrms before zkteco, which depends on erpnext + hrms.
 USER frappe
 RUN cd /home/frappe/frappe-bench \
-    && bench get-app hrms https://github.com/frappe/hrms --branch version-16
+    && bench get-app hrms https://github.com/frappe/hrms --branch version-16 \
+    && bench get-app zkteco_biometric_integration https://github.com/navariltd/zkteco-biometric-integration --branch version-16
 
 USER root
 
