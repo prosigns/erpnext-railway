@@ -40,7 +40,13 @@ RUN apt-get update \
 # Done BEFORE the built_sites copy below so the apps' assets + apps.txt are included.
 # Order matters: hrms before zkteco, which depends on erpnext + hrms.
 USER frappe
+# Seed socketio_port into sites/common_site_config.json BEFORE building the apps.
+# HRMS's v16 PWA frontend (frontend/src/socket.js) does a static named import of
+# `socketio_port` from common_site_config.json; rollup requires the key to exist
+# at build time or `bench build --app hrms` fails with
+#   "socketio_port" is not exported by ".../common_site_config.json"
 RUN cd /home/frappe/frappe-bench \
+    && bench set-config -gp socketio_port 9000 \
     && bench get-app hrms https://github.com/frappe/hrms --branch version-16 \
     && bench get-app zkteco_biometric_integration https://github.com/navariltd/zkteco-biometric-integration --branch version-16
 
