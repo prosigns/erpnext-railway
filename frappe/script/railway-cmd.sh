@@ -26,6 +26,22 @@ require_var() {
     fi
 }
 
+# Link the prebuilt assets + apps metadata from built_sites/ into sites/.
+# railway-entrypoint.sh normally does this, BUT Railway's startCommand bypasses
+# the image ENTRYPOINT, and once a Railway volume is mounted at sites/ it shadows
+# the image's baked-in apps.txt/apps.json/assets. Without these links every bench
+# command dies with "OSError: ./apps.txt Not Found". Recreated on every boot
+# (idempotent) so it survives the empty-volume-on-first-boot case.
+link_built_sites() {
+    local bs="/home/frappe/frappe-bench/built_sites"
+    echo "-> Linking built_sites assets into sites/"
+    chown frappe:frappe "${SITES_DIR}" 2>/dev/null || true
+    su frappe -c "rm -rf '${SITES_DIR}/assets' '${SITES_DIR}/apps.json' '${SITES_DIR}/apps.txt' \
+        && ln -s '${bs}/assets' '${SITES_DIR}/assets' \
+        && ln -s '${bs}/apps.json' '${SITES_DIR}/apps.json' \
+        && ln -s '${bs}/apps.txt' '${SITES_DIR}/apps.txt'"
+}
+
 # Point the site at the external MariaDB and Redis services. There is NO Redis
 # inside this container, so without redis_cache / redis_queue the gunicorn web
 # process and the bench workers cannot start — the :8000 upstream dies and nginx
@@ -82,6 +98,8 @@ report_persistence() {
         echo "######################################################################" >&2
     fi
 }
+
+link_built_sites
 
 configure_services
 
