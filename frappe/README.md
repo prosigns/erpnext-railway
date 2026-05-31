@@ -70,7 +70,7 @@ private networking.
 
 ### 3. Create the frappe service (this repo)
 
-Point a new service at this repository / the `setup-railway-separated` directory.
+Point a new service at this repository / the `frappe` directory.
 Railway will build the [Dockerfile](./Dockerfile) (config in [railway.json](./railway.json)).
 
 **Attach a volume** to the frappe service mounted at exactly:
