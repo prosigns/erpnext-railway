@@ -1,4 +1,9 @@
-FROM thspacecode/erpnext-docker:version-16-latest
+# Base image is overridable so builds can be pinned for reproducibility.
+# The default tracks the moving "version-16-latest" tag; for production pin to a
+# digest, e.g. ERPNEXT_IMAGE=thspacecode/erpnext-docker@sha256:<digest>
+# (set it as a Railway build variable, or `--build-arg` locally).
+ARG ERPNEXT_IMAGE=thspacecode/erpnext-docker:version-16-latest
+FROM ${ERPNEXT_IMAGE}
 
 USER root
 
