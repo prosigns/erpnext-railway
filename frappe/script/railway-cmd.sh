@@ -40,6 +40,12 @@ link_built_sites() {
         && ln -s '${bs}/assets' '${SITES_DIR}/assets' \
         && ln -s '${bs}/apps.json' '${SITES_DIR}/apps.json' \
         && ln -s '${bs}/apps.txt' '${SITES_DIR}/apps.txt'"
+
+    # On a fresh/empty mounted volume sites/common_site_config.json does not
+    # exist. `bench set-config -g` reads-then-merges that file, so it must be
+    # present (even as an empty object) or every set-config call dies with
+    # FileNotFoundError. configure_services() then fills in db_host + redis.
+    su frappe -c "test -f '${SITES_DIR}/common_site_config.json' || echo '{}' > '${SITES_DIR}/common_site_config.json'"
 }
 
 # Point the site at the external MariaDB and Redis services. There is NO Redis
