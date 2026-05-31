@@ -140,6 +140,12 @@ echo "-> Bursting env into config"
 envsubst '$RFP_DOMAIN_NAME' < /home/frappe/temp_nginx.conf > /etc/nginx/conf.d/default.conf
 envsubst '$BENCH_PATH,$NODE_PATH,$GUNICORN_WORKERS,$GUNICORN_THREADS' < /home/frappe/temp_supervisor.conf > /home/frappe/supervisor.conf
 
+# Remove the stock Debian default site. It binds `listen 80 default_server`, which
+# both (a) collides with our default_server (nginx would fail to start) and
+# (b) otherwise swallows the Railway healthcheck (Host: healthcheck.railway.app)
+# and returns 404 on /api/method/ping.
+rm -f /etc/nginx/sites-enabled/default
+
 echo "-> Starting nginx"
 nginx
 
