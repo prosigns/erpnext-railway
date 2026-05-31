@@ -20,51 +20,39 @@ _db_name() {
     echo "${RFP_DOMAIN_NAME}" | tr '.-' '_'
 }
 
-# Returns 0 (true) if the site is fully initialized:
-#   1. The site directory exists
-#   2. site_config.json is present
-#   3. The MariaDB database exists and contains the tabDocType table,
-#      confirming that `bench new-site` completed successfully.
+# Returns 0 (true) if `bench new-site` completed on a previous run.
+# A finished site has its db_name written into site_config.json, so we detect
+# that directly. We deliberately do NOT shell out to the `mysql` CLI to probe
+# MariaDB: that client is not installed in this image, so the old probe ALWAYS
+# returned false and drove an endless new-site crash loop ("Site already
+# exists, use --force"). bench creates the DB via Python, not the mysql CLI.
 is_site_initialized() {
     local site_config="${SITES_DIR}/${RFP_DOMAIN_NAME}/site_config.json"
-    local db_name
-    db_name=$(_db_name)
 
-    # Fast-path: directory or config missing → not initialized
-    if [ ! -d "${SITES_DIR}/${RFP_DOMAIN_NAME}" ] || [ ! -f "${site_config}" ]; then
-        return 1
-    fi
-
-    # Verify the database actually has Frappe's core table.
-    # Uses the MariaDB root password so this works even when the
-    # per-site DB user was not yet created (e.g. partial setup).
-    if mysql -h "${DB_HOST:-mariadb}" -P "${DB_PORT:-3306}" \
-             -u root -p"${FRAPPE_DB_PASSWORD}" \
-             --connect-timeout=10 --silent --skip-column-names \
-             -e "SELECT 1 FROM information_schema.tables
-                 WHERE table_schema = '${db_name}'
-                   AND table_name   = 'tabDocType'
-                 LIMIT 1;" 2>/dev/null | grep -q "1"; then
+    if [ -f "${site_config}" ] && grep -q '"db_name"' "${site_config}"; then
         return 0
     fi
 
-    echo "-> Site directory exists but database '${db_name}' is not initialized" >&2
     return 1
 }
 
 if is_site_initialized; then
-    echo "-> Site ${RFP_DOMAIN_NAME} is already initialized (directory + database verified), skipping site creation"
+    echo "-> Site ${RFP_DOMAIN_NAME} is already initialized, skipping site creation"
 else
-    # NOTE: common_site_config.json (db_host + redis_*) is written by
-    # configure_services() in railway-cmd.sh BEFORE this script runs, so
-    # bench new-site connects to the external MariaDB/Redis correctly.
+    # A leftover, half-created site directory (dir present but no db_name in
+    # site_config.json) would make `bench new-site` abort with "Site already
+    # exists". Pass --force so it cleanly drops/recreates the stale site + DB.
+    # This branch only runs when the site is NOT initialized, so --force can
+    # never clobber a good site.
     echo "-> Create new site with ERPNext"
-    su frappe -c "bench new-site ${RFP_DOMAIN_NAME} --admin-password ${RFP_SITE_ADMIN_PASSWORD} --no-mariadb-socket --db-root-password ${FRAPPE_DB_PASSWORD} --install-app erpnext"
+    su frappe -c "bench new-site ${RFP_DOMAIN_NAME} --force --admin-password ${RFP_SITE_ADMIN_PASSWORD} --no-mariadb-socket --db-root-password ${FRAPPE_DB_PASSWORD} --install-app erpnext"
     su frappe -c "bench --site ${RFP_DOMAIN_NAME} set-config socketio_port 9000"
     su frappe -c "bench use ${RFP_DOMAIN_NAME}"
 
     echo "-> Enable scheduler"
-    bench enable-scheduler
+    # Run as frappe and scoped to the site; guarded so a non-zero exit can't
+    # abort the script (set -e) after the site was already created.
+    su frappe -c "bench --site ${RFP_DOMAIN_NAME} enable-scheduler" 2>&1 || echo "Warning: could not enable scheduler (continuing)"
 fi
 
 echo "-> Install HRMS app into the site"

@@ -45,29 +45,19 @@ configure_services() {
         && bench set-config -gp socketio_port 9000"
 }
 
-# Returns 0 (true) if the site directory, site_config.json, AND the
-# MariaDB database (tabDocType table) are all present — meaning
-# `bench new-site` completed successfully on a previous run.
+# Returns 0 (true) if `bench new-site` completed on a previous run.
+# A finished site has its db_name written into site_config.json, so we detect
+# that directly. We deliberately do NOT shell out to the `mysql` CLI to probe
+# MariaDB: that client is not installed in this image, so the old probe ALWAYS
+# returned false and drove an endless new-site crash loop ("Site already
+# exists, use --force"). bench creates the DB via Python, not the mysql CLI.
 is_site_initialized() {
     local site_config="${SITES_DIR}/${RFP_DOMAIN_NAME}/site_config.json"
-    local db_name
-    db_name=$(_db_name)
 
-    if [ ! -d "${SITES_DIR}/${RFP_DOMAIN_NAME}" ] || [ ! -f "${site_config}" ]; then
-        return 1
-    fi
-
-    if mysql -h "${DB_HOST:-mariadb}" -P "${DB_PORT:-3306}" \
-             -u root -p"${FRAPPE_DB_PASSWORD}" \
-             --connect-timeout=10 --silent --skip-column-names \
-             -e "SELECT 1 FROM information_schema.tables
-                 WHERE table_schema = '${db_name}'
-                   AND table_name   = 'tabDocType'
-                 LIMIT 1;" 2>/dev/null | grep -q "1"; then
+    if [ -f "${site_config}" ] && grep -q '"db_name"' "${site_config}"; then
         return 0
     fi
 
-    echo "-> Site directory exists but database '${db_name}' is not initialized" >&2
     return 1
 }
 
